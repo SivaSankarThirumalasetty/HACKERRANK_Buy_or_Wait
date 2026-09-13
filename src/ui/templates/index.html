@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buy or Wait? — Financial Affordability Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg-main: #0f172a;
+      --bg-card: #1e293b;
+      --bg-card-sub: #334155;
+      --border-color: #475569;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      
+      /* Financial UX status colors */
+      --safe-now-bg: #064e3b;
+      --safe-now-text: #34d399;
+      --safe-now-border: #059669;
+
+      --safe-plan-bg: #1e3a8a;
+      --safe-plan-text: #60a5fa;
+      --safe-plan-border: #2563eb;
+
+      --wait-bg: #78350f;
+      --wait-text: #fbbf24;
+      --wait-border: #d97706;
+
+      --reject-bg: #7f1d1d;
+      --reject-text: #f87171;
+      --reject-border: #dc2626;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 24px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .header-title h1 {
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .header-title p {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .top-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    select, button {
+      font-family: inherit;
+      font-size: 14px;
+      border-radius: 6px;
+      padding: 8px 14px;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+
+    select {
+      background-color: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      min-width: 320px;
+    }
+
+    select:focus {
+      border-color: var(--accent);
+    }
+
+    button.btn-primary {
+      background-color: var(--accent);
+      color: #0f172a;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.btn-primary:hover {
+      background-color: var(--accent-hover);
+      color: #ffffff;
+    }
+
+    .demo-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: rgba(30, 41, 59, 0.7);
+      padding: 10px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+
+    .demo-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      white-space: nowrap;
+      margin-right: 6px;
+    }
+
+    .demo-btn {
+      font-size: 12px;
+      padding: 5px 10px;
+      background: var(--bg-card-sub);
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .demo-btn:hover {
+      background: var(--accent);
+      color: #0f172a;
+      border-color: var(--accent);
+    }
+
+    /* Grid Layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 24px;
+    }
+
+    @media (max-width: 1080px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+      }
+      .top-controls {
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+      }
+      select {
+        min-width: 100%;
+      }
+      .verdict-banner {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .verdict-badge {
+        align-self: flex-start;
+      }
+      .chart-box {
+        height: 220px;
+      }
+      .table-wrapper {
+        overflow-x: auto;
+      }
+    }
+
+    .panel {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .panel h2 {
+      font-size: 15px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    /* Financial Key-Value Pairs */
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 13px;
+    }
+
+    .metric-row:last-child {
+      border-bottom: none;
+    }
+
+    .metric-label {
+      color: var(--text-muted);
+    }
+
+    .metric-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    /* Primary Verdict Banner */
+    .verdict-banner {
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-width: 2px;
+      border-style: solid;
+    }
+
+    .verdict-left h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .verdict-question {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 4px 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+
+    .verdict-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 20px;
+      font-weight: 800;
+      padding: 10px 22px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+      text-align: center;
+    }
+
+    /* Status Badge Classes */
+    .badge-safe-now {
+      background: var(--safe-now-bg);
+      color: var(--safe-now-text);
+      border: 1px solid var(--safe-now-border);
+    }
+
+    .badge-plan {
+      background: var(--safe-plan-bg);
+      color: var(--safe-plan-text);
+      border: 1px solid var(--safe-plan-border);
+    }
+
+    .badge-wait {
+      background: var(--wait-bg);
+      color: var(--wait-text);
+      border: 1px solid var(--wait-border);
+    }
+
+    .badge-not-recommended {
+      background: var(--reject-bg);
+      color: var(--reject-text);
+      border: 1px solid var(--reject-border);
+    }
+
+    /* Recommendation Breakdown Grid */
+    .recommendation-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .recom-card {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 14px;
+    }
+
+    .recom-card-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .recom-card-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    /* Concise Explanation Box */
+    .explanation-box {
+      background: rgba(15, 23, 42, 0.6);
+      border-left: 4px solid var(--accent);
+      padding: 16px 20px;
+      border-radius: 0 6px 6px 0;
+      font-size: 14px;
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+
+    /* Chart Container */
+    .chart-box {
+      position: relative;
+      height: 280px;
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    th {
+      color: var(--text-muted);
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    td.mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Messages & Evidence */
+    .evidence-item {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .evidence-meta {
+      display: flex;
+      justify-content: space-between;
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .image-preview {
+      margin-top: 12px;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 6px;
+    }
+
+    .image-preview img {
+      max-width: 100%;
+      max-height: 220px;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Loading Spinner */
+    .loading-overlay {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--accent);
+      font-weight: 600;
+      gap: 10px;
+    }
+
+    .spinner {
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top: 3px solid var(--accent);
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .audit-trace-box {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      background: #090d16;
+      color: #94a3b8;
+      padding: 14px;
+      border-radius: 6px;
+      border: 1px solid var(--border-color);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="header-title">
+        <h1>Buy or Wait? — Financial Affordability Agent</h1>
+        <p>Deterministic 90-Day Cash-Flow Forecasting & Multi-Tier Payment Plan Engine</p>
+      </div>
+      <div class="top-controls">
+        <select id="requestSelect">
+          <option value="">Loading requests...</option>
+        </select>
+        <button id="analyzeBtn" class="btn-primary">Evaluate Request</button>
+      </div>
+    </header>
+
+    <!-- Demo Bar with Representative Edge Cases -->
+    <div class="demo-bar">
+      <span class="demo-label">Representative Demos:</span>
+      <div id="demoButtons" style="display: flex; gap: 8px;"></div>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+      <div class="spinner"></div>
+      <span>Reconstructing financial state & evaluating 90-day forecast...</span>
+    </div>
+
+    <!-- Error Banner -->
+    <div id="errorBanner" style="display: none; background: #7f1d1d; border: 1px solid #dc2626; color: #fecaca; padding: 14px 20px; border-radius: 8px; margin-bottom: 20px; font-size: 14px;">
+      <strong style="color: #ffffff;">Error: </strong><span id="errorMessage">Unable to evaluate request.</span>
+    </div>
+
+    <!-- Development Warning Banner -->
+    <div id="devWarningBanner" style="display: none; background: rgba(180, 83, 9, 0.2); border: 1px solid #f59e0b; color: #fef3c7; padding: 14px 20px; border-radius: 8px; margin-bottom: 20px; font-size: 13px;">
+      <strong style="color: #fbbf24;">⚠️ Development Warning: </strong><span id="devWarningMessage">Engine decision differs from legacy demo label.</span>
+    </div>
+
+    <div id="content" class="dashboard-grid">
+      <!-- Left Column: User Profile & Request Context -->
+      <div class="left-col">
+        <!-- Request Details -->
+        <div class="panel">
+          <h2>Purchase / Expense Request</h2>
+          <div class="metric-row">
+            <span class="metric-label">Request ID</span>
+            <span id="reqId" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Category</span>
+            <span id="reqType" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Requested Amount</span>
+            <span id="reqAmount" class="metric-val" style="color: var(--accent); font-size: 15px;">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Request Date</span>
+            <span id="reqDate" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Desired Deadline</span>
+            <span id="reqDeadline" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Partial Permitted</span>
+            <span id="reqPartial" class="metric-val">-</span>
+          </div>
+          <div style="margin-top: 12px; font-size: 12px; color: var(--text-muted); font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 4px;">
+            "<span id="reqText">-</span>"
+          </div>
+        </div>
+
+        <!-- User Profile -->
+        <div class="panel">
+          <h2>Financial Profile</h2>
+          <div class="metric-row">
+            <span class="metric-label">User ID</span>
+            <span id="profUser" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Home Currency</span>
+            <span id="profCur" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Current Available Balance</span>
+            <span id="profBalance" class="metric-val" style="color: #34d399;">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Minimum Required Balance</span>
+            <span id="profMinBalance" class="metric-val" style="color: #fbbf24;">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Upcoming Confirmed Income (90d)</span>
+            <span id="profIncome" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Protected Expenses (90d)</span>
+            <span id="profProtected" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Willing Payment Methods</span>
+            <span id="profMethods" class="metric-val">-</span>
+          </div>
+          <div class="metric-row">
+            <span class="metric-label">Max Installment Months</span>
+            <span id="profMaxInst" class="metric-val">-</span>
+          </div>
+        </div>
+
+        <!-- Evidence (Messages & Images) -->
+        <div class="panel">
+          <h2>Supporting Evidence</h2>
+          <div id="evidenceContainer">
+            <p style="font-size: 12px; color: var(--text-muted);">No supporting messages.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Decision, Forecast & Options -->
+      <div class="right-col">
+        <!-- Main Verdict Banner -->
+        <div id="verdictBanner" class="verdict-banner badge-safe-now">
+          <div class="verdict-left">
+            <h3>Decision Engine Recommendation</h3>
+            <div class="verdict-question">Can I afford this?</div>
+            <div id="verdictSub" style="font-size: 14px; opacity: 0.9;">Safe to purchase today.</div>
+          </div>
+          <div id="verdictBadge" class="verdict-badge badge-safe-now">
+            SAFE NOW
+          </div>
+        </div>
+
+        <!-- Key Financial Metrics Card Grid -->
+        <div class="panel">
+          <h2>Affordability Metrics & Payment Plan</h2>
+          <div class="recommendation-grid">
+            <div class="recom-card">
+              <div class="recom-card-title">Amount Safe Today</div>
+              <div id="resSafeAmt" class="recom-card-val">-</div>
+            </div>
+            <div class="recom-card">
+              <div class="recom-card-title">Recommended Method</div>
+              <div id="resMethod" class="recom-card-val" style="text-transform: capitalize;">-</div>
+            </div>
+            <div class="recom-card">
+              <div class="recom-card-title">Earliest Safe Full Date</div>
+              <div id="resEarliestDate" class="recom-card-val">-</div>
+            </div>
+            <div class="recom-card">
+              <div class="recom-card-title">Spending Changes</div>
+              <div id="resSpendingChanges" class="recom-card-val" style="font-size: 13px;">none</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <span style="font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Payment Schedule:</span>
+            <div id="resPaymentPlan" style="font-family: 'JetBrains Mono', monospace; font-size: 14px; margin-top: 4px; color: var(--accent);">-</div>
+          </div>
+
+          <div id="resExplanation" class="explanation-box">
+            Analyzing...
+          </div>
+        </div>
+
+        <!-- 90-Day Forecast Chart -->
+        <div class="panel">
+          <h2>90-Day Cash-Flow Balance Forecast</h2>
+          <div class="chart-box">
+            <canvas id="forecastChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Available Payment Options Table -->
+        <div class="panel">
+          <h2>Seller / Provider Payment Options</h2>
+          <div class="table-wrapper">
+            <table id="optionsTable">
+              <thead>
+                <tr>
+                  <th>Option ID</th>
+                  <th>Method</th>
+                  <th>Payments</th>
+                  <th>Per Payment</th>
+                  <th>Financing Fee</th>
+                  <th>Total Payable</th>
+                  <th>Start Date</th>
+                </tr>
+              </thead>
+              <tbody id="optionsBody">
+                <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No payment options loaded.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Machine-Readable Audit Trace -->
+        <div class="panel">
+          <h2>Decision Trace & Candidate Plan Evaluations</h2>
+          <pre id="auditTrace" class="audit-trace-box">Audit trace will appear here...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let forecastChart = null;
+
+    async function loadRequests() {
+      try {
+        const res = await fetch('/api/requests');
+        const data = await res.json();
+        
+        // Populate select
+        const sel = document.getElementById('requestSelect');
+        sel.innerHTML = '';
+        data.all_requests.forEach(r => {
+          const opt = document.createElement('option');
+          opt.value = r.id;
+          opt.textContent = r.label;
+          sel.appendChild(opt);
+        });
+
+        // Populate demos
+        const demoContainer = document.getElementById('demoButtons');
+        demoContainer.innerHTML = '';
+        data.demos.forEach(d => {
+          const btn = document.createElement('button');
+          btn.className = 'demo-btn';
+          btn.textContent = d.title;
+          btn.onclick = () => {
+            sel.value = d.id;
+            evaluateCurrentRequest();
+          };
+          demoContainer.appendChild(btn);
+        });
+
+        // Trigger default first request
+        if (data.all_requests.length > 0) {
+          sel.value = 'request_01';
+          evaluateCurrentRequest();
+        }
+      } catch (err) {
+        console.error("Failed to load requests:", err);
+      }
+    }
+
+    async function evaluateCurrentRequest() {
+      const sel = document.getElementById('requestSelect');
+      const reqId = sel.value;
+      if (!reqId) return;
+
+      const errBanner = document.getElementById('errorBanner');
+      const errMsg = document.getElementById('errorMessage');
+      errBanner.style.display = 'none';
+
+      document.getElementById('loading').style.display = 'flex';
+      document.getElementById('content').style.opacity = '0.3';
+
+      try {
+        const res = await fetch(`/api/analyze/${reqId}`);
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || `HTTP ${res.status}: Failed to evaluate request`);
+        }
+        renderDashboard(data);
+      } catch (err) {
+        console.error("Evaluation error:", err);
+        errMsg.textContent = err.message || err;
+        errBanner.style.display = 'block';
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('content').style.opacity = '1';
+      }
+    }
+
+    function renderDashboard(data) {
+      const req = data.request;
+      const prof = data.profile;
+      const dec = data.decision;
+      const cur = prof.home_currency;
+
+      // Development Warning Banner
+      const warnBanner = document.getElementById('devWarningBanner');
+      const warnMsg = document.getElementById('devWarningMessage');
+      const warningText = data.warning || (dec && dec.warning);
+      if (warningText) {
+        warnMsg.textContent = warningText;
+        warnBanner.style.display = 'block';
+      } else {
+        warnBanner.style.display = 'none';
+      }
+
+      // Request Card
+      document.getElementById('reqId').textContent = req.id;
+      document.getElementById('reqType').textContent = req.type.toUpperCase();
+      document.getElementById('reqAmount').textContent = `${cur} ${req.amount}`;
+      document.getElementById('reqDate').textContent = req.request_date;
+      document.getElementById('reqDeadline').textContent = req.desired_completion_date;
+      document.getElementById('reqPartial').textContent = req.allows_partial_payment ? "Yes" : "No";
+      document.getElementById('reqText').textContent = req.request_text || "None";
+
+      // Profile Card
+      document.getElementById('profUser').textContent = prof.user_id;
+      document.getElementById('profCur').textContent = prof.home_currency;
+      document.getElementById('profBalance').textContent = `${cur} ${prof.current_balance}`;
+      document.getElementById('profMinBalance').textContent = `${cur} ${prof.minimum_balance}`;
+      document.getElementById('profIncome').textContent = `${cur} ${prof.upcoming_income}`;
+      document.getElementById('profProtected').textContent = `${cur} ${prof.protected_expenses}`;
+      document.getElementById('profMethods').textContent = prof.payment_preferences.join(', ');
+      document.getElementById('profMaxInst').textContent = prof.max_installment_months ? `${prof.max_installment_months} months` : 'None (No installments)';
+
+      // Verdict Banner
+      const banner = document.getElementById('verdictBanner');
+      const badge = document.getElementById('verdictBadge');
+      const sub = document.getElementById('verdictSub');
+
+      banner.className = `verdict-banner ${dec.badge_class}`;
+      badge.className = `verdict-badge ${dec.badge_class}`;
+      badge.textContent = dec.badge_label;
+
+      if (dec.status === 'affordable_now') {
+        sub.textContent = "Safe to pay in full today. Minimum balance remains protected.";
+      } else if (dec.status === 'affordable_with_plan') {
+        sub.textContent = "Affordable using a structured payment plan or spending adjustment.";
+      } else if (dec.status === 'affordable_later') {
+        sub.textContent = `Wait until ${dec.earliest_date_for_full_payment} when confirmed income settles.`;
+      } else {
+        sub.textContent = "Not recommended. Payment would breach required minimum balance.";
+      }
+
+      // Metrics
+      document.getElementById('resSafeAmt').textContent = `${cur} ${dec.amount_safe_to_pay}`;
+      document.getElementById('resMethod').textContent = dec.recommended_method.replace('_', ' ');
+      document.getElementById('resEarliestDate').textContent = dec.earliest_date_for_full_payment;
+      document.getElementById('resSpendingChanges').textContent = dec.spending_changes_needed;
+      document.getElementById('resPaymentPlan').textContent = dec.payment_plan;
+      document.getElementById('resExplanation').textContent = dec.explanation;
+
+      // Evidence (Messages & Image)
+      const evCont = document.getElementById('evidenceContainer');
+      evCont.innerHTML = '';
+      
+      const hasMessages = data.evidence.messages && data.evidence.messages.length > 0;
+      const hasImage = !!data.evidence.image;
+
+      if (!hasMessages && !hasImage) {
+        evCont.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); font-style: italic; padding: 6px 0;">No external messages or receipt images associated with this user or request.</p>';
+      } else {
+        if (hasMessages) {
+          data.evidence.messages.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'evidence-item';
+            div.innerHTML = `
+              <div class="evidence-meta">
+                <span>${m.id} (${m.source})</span>
+                <span style="color: var(--text-muted); font-size: 11px;">${m.sent_at}</span>
+              </div>
+              <div>${m.text}</div>
+            `;
+            evCont.appendChild(div);
+          });
+        } else {
+          const noMsgDiv = document.createElement('div');
+          noMsgDiv.innerHTML = '<p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">No messages linked.</p>';
+          evCont.appendChild(noMsgDiv);
+        }
+
+        if (hasImage) {
+          const im = data.evidence.image;
+          const imDiv = document.createElement('div');
+          imDiv.className = 'image-preview';
+          imDiv.innerHTML = `
+            <div style="font-size: 11px; font-weight: 600; color: var(--accent); margin-bottom: 6px;">
+              ${im.image_id} - Linked to ${im.event_id}
+            </div>
+            <img src="${im.url}" alt="Receipt Evidence">
+            <div style="font-size: 11px; color: #34d399; margin-top: 6px; font-family: 'JetBrains Mono', monospace;">
+              Extracted: ${im.extracted_currency} ${im.extracted_amount}
+            </div>
+            <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+              ${im.rationale}
+            </div>
+          `;
+          evCont.appendChild(imDiv);
+        }
+      }
+
+      // Available Options Table
+      const optBody = document.getElementById('optionsBody');
+      optBody.innerHTML = '';
+      if (data.available_options && data.available_options.length > 0) {
+        data.available_options.forEach(opt => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="mono" style="color: var(--accent);">${opt.id}</td>
+            <td style="text-transform: capitalize;">${opt.method.replace('_', ' ')}</td>
+            <td class="mono">${opt.payments}</td>
+            <td class="mono">${cur} ${opt.amount}</td>
+            <td class="mono">${cur} ${opt.fee}</td>
+            <td class="mono" style="font-weight: 600;">${cur} ${opt.total}</td>
+            <td class="mono">${opt.start_date}</td>
+          `;
+          optBody.appendChild(tr);
+        });
+      } else {
+        optBody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No options available.</td></tr>';
+      }
+
+      // 90-Day Chart
+      renderChart(data.chart, cur);
+
+      // Audit Trace
+      document.getElementById('auditTrace').textContent = JSON.stringify(data.trace, null, 2);
+    }
+
+    function renderChart(chartData, cur) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      if (forecastChart) {
+        forecastChart.destroy();
+      }
+
+      const thresholdLine = new Array(chartData.dates.length).fill(chartData.threshold);
+
+      forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.dates,
+          datasets: [
+            {
+              label: 'Projected Daily Closing Balance',
+              data: chartData.balances,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.08)',
+              borderWidth: 2,
+              fill: true,
+              pointRadius: 0,
+              tension: 0.1
+            },
+            {
+              label: 'Minimum Balance Safety Threshold',
+              data: thresholdLine,
+              borderColor: '#ef4444',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#94a3b8', font: { family: 'Inter', size: 12 } }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: function(context) {
+                  return `${context.dataset.label}: ${cur} ${context.parsed.y.toLocaleString()}`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', maxTicksLimit: 12, font: { family: 'JetBrains Mono', size: 10 } }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    document.getElementById('analyzeBtn').addEventListener('click', evaluateCurrentRequest);
+    document.getElementById('requestSelect').addEventListener('change', evaluateCurrentRequest);
+    window.addEventListener('DOMContentLoaded', loadRequests);
+  </script>
+</body>
+</html>
