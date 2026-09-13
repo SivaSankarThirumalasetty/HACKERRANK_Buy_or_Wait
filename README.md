@@ -346,10 +346,3 @@ http://localhost:5000
 2. **Offline OCR Pre-Extraction**: Image text extraction is hardcoded to pre-extracted OCR amounts for the 16 missing event rows to guarantee 100% deterministic test reproducibility without requiring heavy external Tesseract or Vision API dependencies at runtime.
 3. **Static Exchange Rates**: Rates are matched to the nearest prior date in `exchange_rates.csv`. Future foreign currency volatility is not modeled stochastically.
 4. **Headless Browser Test Requirements**: Automated browser testing via `tests/integration/test_e2e_browser.py` requires a local Chrome installation; minimal Linux Docker environments should rely on `python run.py` and `pytest tests/`.
-
----
-
-## 15. Submission Link
-
-For contest evaluation, submit `code.zip` and `output.csv` via the official portal:  
-👉 **https://www.hackerrank.com/contests/hackerrank-orchestrate-september26/challenges/buy-or-wait/submission**
